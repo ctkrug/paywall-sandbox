@@ -112,11 +112,24 @@ func newNonce() string {
 
 func (s *Server) storeIssued(desc paywall.Descriptor) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.issued == nil {
 		s.issued = make(map[string]paywall.Descriptor)
 	}
+	s.sweepExpiredLocked(time.Now())
 	s.issued[desc.Nonce] = desc
-	s.mu.Unlock()
+}
+
+// sweepExpiredLocked discards issued nonces past their expiry. Without
+// this, a long-running Server accumulates one map entry per challenge
+// that's never retried (abandoned clients, ignored expiries), growing
+// unbounded. Callers must hold s.mu.
+func (s *Server) sweepExpiredLocked(now time.Time) {
+	for nonce, desc := range s.issued {
+		if desc.Expired(now) {
+			delete(s.issued, nonce)
+		}
+	}
 }
 
 // acceptProof reports whether req carries a valid, unexpired proof for a
@@ -137,7 +150,11 @@ func (s *Server) acceptProof(req *http.Request) bool {
 	defer s.mu.Unlock()
 
 	desc, ok := s.issued[proof.Nonce]
-	if !ok || desc.Expired(time.Now()) {
+	if !ok {
+		return false
+	}
+	if desc.Expired(time.Now()) {
+		delete(s.issued, proof.Nonce)
 		return false
 	}
 
