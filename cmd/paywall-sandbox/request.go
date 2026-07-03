@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/ctkrug/paywall-sandbox/internal/client"
 )
@@ -17,6 +18,7 @@ func runRequest(args []string) {
 	scheme := fs.String("scheme", client.FakeScheme, "proof scheme to settle a challenge with (fake, hmac-sha256)")
 	hmacKey := fs.String("hmac-key", "", "shared secret for --scheme hmac-sha256")
 	verbose := fs.Bool("verbose", false, "print every header/descriptor/proof exchanged")
+	timeout := fs.Duration("timeout", 10*time.Second, "give up if the target doesn't respond within this long")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(1)
 	}
@@ -31,8 +33,11 @@ func runRequest(args []string) {
 		os.Exit(1)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
 	loop := &client.Loop{Signer: signer}
-	result, err := loop.Do(context.Background(), *method, *url)
+	result, err := loop.Do(ctx, *method, *url)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "request: %v\n", err)
 		os.Exit(1)
