@@ -1,0 +1,26 @@
+# Build artifacts
+/bin/
+/dist/
+paywall-sandbox
+*.exe
+*.test
+
+# Go
+*.out
+*.prof
+vendor/
+
+# Coverage
+coverage.txt
+coverage.html
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local env / secrets
+.env
+.env.*
+*.local.yaml
