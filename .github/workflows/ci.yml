@@ -25,6 +25,12 @@ jobs:
       - name: Test
         run: go test -race ./...
 
+      - name: Run example scenarios
+        run: |
+          go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
+          ./bin/paywall-sandbox test examples/scenario.json
+          ./bin/paywall-sandbox test examples/scenario-hmac.json
+
       - name: Gofmt check
         run: |
           diff <(gofmt -l .) <(echo -n "")
