@@ -72,6 +72,17 @@ func TestCLITestSubcommandVerboseTracesSteps(t *testing.T) {
 	}
 }
 
+func TestCLITestSubcommandRunsHMACScenario(t *testing.T) {
+	cmd := exec.Command(binPath, "test", "../../examples/scenario-hmac.json")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test examples/scenario-hmac.json: %v (%s)", err, out)
+	}
+	if !strings.Contains(string(out), "PASS") {
+		t.Errorf("test output = %q, want it to contain PASS", out)
+	}
+}
+
 func TestCLITestSubcommandMissingFileExitsNonZero(t *testing.T) {
 	cmd := exec.Command(binPath, "test", "does-not-exist.json")
 	if err := cmd.Run(); err == nil {
