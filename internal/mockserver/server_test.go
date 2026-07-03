@@ -3,6 +3,7 @@ package mockserver
 import (
 	"errors"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -218,5 +219,53 @@ func TestServerDeletesExpiredNonceOnAttemptedUse(t *testing.T) {
 	s.mu.Unlock()
 	if stillPresent {
 		t.Fatal("expired nonce was not reclaimed on attempted use")
+	}
+}
+
+// TestServerHandlesConcurrentChallenges drives many independent
+// challenge->pay round trips through the same Server at once, guarding
+// the shared issued map (and its new sweep-on-store cleanup) against
+// races and cross-talk between nonces. Run with -race to be meaningful.
+func TestServerHandlesConcurrentChallenges(t *testing.T) {
+	s := newTestServer(time.Minute)
+
+	const workers = 50
+	var wg sync.WaitGroup
+	errs := make(chan string, workers)
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			rec := httptest.NewRecorder()
+			s.ServeHTTP(rec, httptest.NewRequest("GET", "/paid", nil))
+			if rec.Code != 402 {
+				errs <- "challenge status != 402"
+				return
+			}
+			desc, err := paywall.DecodeDescriptor(rec.Body.Bytes())
+			if err != nil {
+				errs <- "decode: " + err.Error()
+				return
+			}
+
+			proof := paywall.Proof{Nonce: desc.Nonce, Scheme: FakeScheme, Signature: "n/a"}
+			proofBody, _ := proof.Encode()
+			req := httptest.NewRequest("GET", "/paid", nil)
+			req.Header.Set(paywall.HeaderProof, string(proofBody))
+
+			payRec := httptest.NewRecorder()
+			s.ServeHTTP(payRec, req)
+			if payRec.Code != 200 {
+				errs <- "pay status != 200"
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Error(e)
 	}
 }
