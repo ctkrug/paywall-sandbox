@@ -1,11 +1,15 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ctkrug/paywall-sandbox/internal/mockserver"
 )
 
 // binPath is set by TestMain to a binary built once for the whole package,
@@ -68,5 +72,27 @@ func TestCLIRequestMissingURLExitsNonZero(t *testing.T) {
 	cmd := exec.Command(binPath, "request")
 	if err := cmd.Run(); err == nil {
 		t.Error("request with no --url: want non-zero exit, got success")
+	}
+}
+
+func TestCLIRequestSettlesAgainstMockServer(t *testing.T) {
+	srv := httptest.NewServer(&mockserver.Server{
+		Rules: []mockserver.Rule{{Path: "/paid", Amount: 100, Asset: "USDC", Recipient: "0xsandbox"}},
+		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}),
+	})
+	defer srv.Close()
+
+	cmd := exec.Command(binPath, "request", "--url", srv.URL+"/paid", "--verbose")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("request --url %s: %v (%s)", srv.URL+"/paid", err, out)
+	}
+	if !strings.Contains(string(out), "-> 200") {
+		t.Errorf("request output = %q, want it to contain %q", out, "-> 200")
+	}
+	if !strings.Contains(string(out), "proof:") {
+		t.Errorf("request --verbose output = %q, want it to include the proof trace", out)
 	}
 }
