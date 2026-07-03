@@ -14,6 +14,8 @@ func runRequest(args []string) {
 	fs := flag.NewFlagSet("request", flag.ExitOnError)
 	url := fs.String("url", "", "URL to request (required)")
 	method := fs.String("method", http.MethodGet, "HTTP method to use")
+	scheme := fs.String("scheme", client.FakeScheme, "proof scheme to settle a challenge with (fake, hmac-sha256)")
+	hmacKey := fs.String("hmac-key", "", "shared secret for --scheme hmac-sha256")
 	verbose := fs.Bool("verbose", false, "print every header/descriptor/proof exchanged")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(1)
@@ -23,7 +25,13 @@ func runRequest(args []string) {
 		os.Exit(1)
 	}
 
-	loop := &client.Loop{Signer: client.FakeSigner{}}
+	signer, err := resolveSigner(*scheme, *hmacKey)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "request: %v\n", err)
+		os.Exit(1)
+	}
+
+	loop := &client.Loop{Signer: signer}
 	result, err := loop.Do(context.Background(), *method, *url)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "request: %v\n", err)
@@ -43,6 +51,23 @@ func runRequest(args []string) {
 
 	if result.FinalStatusCode >= http.StatusBadRequest {
 		os.Exit(1)
+	}
+}
+
+// resolveSigner maps a --scheme flag value to the client.Signer that
+// produces it, matching the schemes internal/scenario resolves scenario
+// steps against.
+func resolveSigner(scheme, hmacKey string) (client.Signer, error) {
+	switch scheme {
+	case client.FakeScheme:
+		return client.FakeSigner{}, nil
+	case client.HMACScheme:
+		if hmacKey == "" {
+			return nil, fmt.Errorf("--scheme %s requires --hmac-key", client.HMACScheme)
+		}
+		return client.HMACSigner{Key: []byte(hmacKey)}, nil
+	default:
+		return nil, fmt.Errorf("unknown --scheme %q", scheme)
 	}
 }
 
