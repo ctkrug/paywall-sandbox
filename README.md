@@ -28,19 +28,25 @@ touching a real settlement network, a real wallet, or real money:
   shape, retry behavior) so you can catch integration bugs before they hit a
   real payment rail.
 
-## Planned features
+## Features
 
 - **Mock 402 server** — configurable per-route challenge rules (price,
   currency/asset, recipient, expiry, nonce) served as a structured payment
-  descriptor in the `402` response body/headers.
+  descriptor in the `402` response body/headers. Routes load from flags or a
+  JSON rule set file, with exact-path or `/*`-prefix matching.
 - **CLI client** — `paywall-sandbox request --url <url>` to run the full
   challenge → pay → retry loop against any target, mock or real.
-- **Proof construction** — pluggable payment-proof builders, starting with a
-  fake/local scheme, so real settlement integrations can be swapped in later.
-- **Scenario scripting** — declarative YAML/JSON scenarios describing
-  expected challenge/response sequences, runnable in CI.
-- **Inspection mode** — verbose logging of every header, descriptor field,
-  and retry so you can see exactly what a real client would need to do.
+- **Pluggable proof schemes** — `fake` (unconditional accept, for exercising
+  the protocol shape) and `hmac-sha256` (a shared-secret signature, one step
+  closer to real settlement evidence) ship today; see
+  [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for how to add another.
+- **Scenario scripting** — `paywall-sandbox test <scenario.json>` runs a
+  declarative JSON scenario describing an expected challenge/response
+  sequence against an in-process server and exits non-zero on any assertion
+  failure, so it's usable as a CI check.
+- **Inspection mode** — `--verbose` on both `request` and `test` traces every
+  header, descriptor field, and proof exchanged, so you can see exactly what
+  a real client would need to do.
 
 ## Quick start
 
@@ -79,6 +85,35 @@ $ ./bin/paywall-sandbox serve --config examples/rules.json
 paywall-sandbox dev listening on :8402 (2 rule(s))
 ```
 
+`request` defaults to the `fake` scheme; pass `--scheme hmac-sha256
+--hmac-key <secret>` to settle against a server configured for that scheme
+instead (see [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for how schemes work).
+
+### Scenario scripting
+
+`test` runs a declarative scenario — its own rule set, hmac key (if any),
+and a sequence of requests with expected outcomes — against a server it
+starts and tears down itself, so it needs nothing already running:
+
+```console
+$ ./bin/paywall-sandbox test examples/scenario.json
+scenario: paid route settles, free route does not
+  [PASS] GET /paid is challenged and settles with the fake scheme
+  [PASS] GET /free is never challenged
+```
+
+A failing step is reported and the process exits `1`, so `test` doubles as a
+CI assertion:
+
+```console
+$ ./bin/paywall-sandbox test examples/scenario.json && echo "scenario ok"
+```
+
+See [`examples/scenario.json`](examples/scenario.json) and
+[`examples/scenario-hmac.json`](examples/scenario-hmac.json) for runnable
+examples, and [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full scenario
+file format.
+
 ## Stack
 
 - **Go** (1.22+) — single static binary, no runtime dependencies.
@@ -88,8 +123,10 @@ paywall-sandbox dev listening on :8402 (2 rule(s))
 
 ## Status
 
-Early scaffold — see [`docs/VISION.md`](docs/VISION.md) for the design and
-[`docs/BACKLOG.md`](docs/BACKLOG.md) for the build plan.
+The core challenge/response loop, configurable rule sets, pluggable proof
+schemes, and scenario scripting are implemented. See
+[`docs/VISION.md`](docs/VISION.md) for the design and
+[`docs/BACKLOG.md`](docs/BACKLOG.md) for what's left.
 
 ## License
 
