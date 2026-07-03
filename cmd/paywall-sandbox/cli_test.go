@@ -90,6 +90,29 @@ func TestCLITestSubcommandMissingFileExitsNonZero(t *testing.T) {
 	}
 }
 
+func TestCLITestSubcommandFailingStepExitsNonZero(t *testing.T) {
+	const failingScenario = `{
+		"name": "deliberately wrong expectation",
+		"rules": [{"path": "/paid", "amount": 100, "asset": "USDC", "recipient": "0xsandbox"}],
+		"steps": [
+			{"name": "expects a status the server will never return", "method": "GET", "path": "/paid", "expect": {"paid": true, "finalStatus": 599}}
+		]
+	}`
+	path := filepath.Join(t.TempDir(), "failing.json")
+	if err := os.WriteFile(path, []byte(failingScenario), 0o644); err != nil {
+		t.Fatalf("write scenario: %v", err)
+	}
+
+	cmd := exec.Command(binPath, "test", path)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("test %s: want non-zero exit, got success (%s)", path, out)
+	}
+	if !strings.Contains(string(out), "FAIL") {
+		t.Errorf("test output = %q, want it to contain FAIL", out)
+	}
+}
+
 func TestCLIRequestMissingURLExitsNonZero(t *testing.T) {
 	cmd := exec.Command(binPath, "request")
 	if err := cmd.Run(); err == nil {
