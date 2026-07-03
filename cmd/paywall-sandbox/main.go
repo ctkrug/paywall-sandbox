@@ -16,23 +16,34 @@ import (
 var version = "dev"
 
 func main() {
-	if len(os.Args) < 2 {
+	os.Exit(dispatch(os.Args[1:]))
+}
+
+// dispatch resolves a subcommand and runs it, returning the process exit
+// code. Split out from main so the routing logic (as opposed to the
+// subcommands themselves, which call os.Exit directly) is testable.
+func dispatch(args []string) int {
+	if len(args) < 1 {
 		usage()
-		os.Exit(1)
+		return 1
 	}
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "version":
 		fmt.Println("paywall-sandbox " + version)
+		return 0
 	case "serve":
-		runServe(os.Args[2:])
+		runServe(args[1:])
+		return 0
 	case "request":
-		runRequest(os.Args[2:])
+		runRequest(args[1:])
+		return 0
 	case "test":
-		runTest(os.Args[2:])
+		runTest(args[1:])
+		return 0
 	default:
 		usage()
-		os.Exit(1)
+		return 1
 	}
 }
 
