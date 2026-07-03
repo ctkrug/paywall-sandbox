@@ -10,6 +10,7 @@ the wire format, [`BACKLOG.md`](BACKLOG.md) for what's left.
 cmd/paywall-sandbox/    CLI entrypoint: subcommand dispatch + flag parsing
 internal/paywall/       Wire types shared by both sides: Descriptor, Proof
 internal/mockserver/    The mock 402 server: Rule matching, Server, logging
+internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
 ```
 
 - **`internal/paywall`** — no dependencies beyond stdlib. Defines
@@ -24,9 +25,16 @@ internal/mockserver/    The mock 402 server: Rule matching, Server, logging
   mutex — one-time use, hard TTL, no persistence (see `docs/PROTOCOL.md` for
   why). `LogRequests` is a middleware wrapping any handler with structured
   request logging.
+- **`internal/client`** — the CLI client side. `Signer` builds a `Proof`
+  from a received `Descriptor`; `FakeSigner` is the v1 (and only)
+  implementation. `Loop` drives the exchange: send, detect a 402, decode
+  the descriptor, sign, retry once — returning a `Result` with a
+  step-by-step `Steps` trace used for `--verbose` output. Only depends on
+  `internal/paywall` and stdlib `net/http`, so it can run against any
+  target, not just `internal/mockserver`.
 - **`cmd/paywall-sandbox`** — thin CLI wrapper. `serve` stands up a
-  `mockserver.Server` with a single rule from flags; `version` prints the
-  build version.
+  `mockserver.Server` with a single rule from flags; `request` drives a
+  `client.Loop` against `--url`; `version` prints the build version.
 
 ## Data flow (server side)
 
@@ -36,6 +44,17 @@ request → Server.ServeHTTP
             → no match:            forward to Next
             → match, no/invalid proof:  issue Descriptor, 402
             → match, valid proof:  consume nonce, forward to Next
+```
+
+## Data flow (client side)
+
+```
+Loop.Do → send initial request
+            → status != 402:  return result (Paid=false)
+            → status == 402:  decode Descriptor (header, falls back to body)
+                               → Signer.Sign(desc) -> Proof
+                               → retry with X-Payment header set
+                               → return result (Paid=true)
 ```
 
 ## Build / run / test
@@ -56,6 +75,5 @@ go test ./...
 - New rule sources (config file, wildcard paths): `internal/mockserver`,
   extending `Rule`/`Rule.Matches` and adding a loader, not touching
   `Server`.
-- A CLI client that drives the loop from the other side: a new
-  `internal/client`-shaped package plus a `request` subcommand — see
-  `docs/BACKLOG.md`'s CLI client epic.
+- New signer schemes: implement `client.Signer` and wire a `--scheme` flag
+  in `cmd/paywall-sandbox/request.go` to select among them.
