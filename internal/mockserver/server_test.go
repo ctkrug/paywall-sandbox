@@ -177,3 +177,46 @@ func TestServerPassesThroughUnmatchedRoutes(t *testing.T) {
 		t.Fatalf("status = %d, want 200 for unmatched route", rec.Code)
 	}
 }
+
+// TestServerSweepsExpiredNonces guards against unbounded memory growth on a
+// long-running Server: challenges that expire without ever being retried
+// must not accumulate in the issued map forever.
+func TestServerSweepsExpiredNonces(t *testing.T) {
+	s := newTestServer(-time.Second)
+
+	for i := 0; i < 5; i++ {
+		rec := httptest.NewRecorder()
+		s.ServeHTTP(rec, httptest.NewRequest("GET", "/paid", nil))
+	}
+
+	s.mu.Lock()
+	got := len(s.issued)
+	s.mu.Unlock()
+	if got != 1 {
+		t.Fatalf("len(issued) = %d, want 1 (all prior entries were already expired)", got)
+	}
+}
+
+// TestServerDeletesExpiredNonceOnAttemptedUse checks that presenting a
+// proof for an already-expired nonce also reclaims that entry immediately,
+// rather than waiting for the next challenge to sweep it.
+func TestServerDeletesExpiredNonceOnAttemptedUse(t *testing.T) {
+	s := newTestServer(-time.Second)
+
+	rec := httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest("GET", "/paid", nil))
+	desc, _ := paywall.DecodeDescriptor(rec.Body.Bytes())
+
+	proof := paywall.Proof{Nonce: desc.Nonce, Scheme: FakeScheme, Signature: "n/a"}
+	proofBody, _ := proof.Encode()
+	req := httptest.NewRequest("GET", "/paid", nil)
+	req.Header.Set(paywall.HeaderProof, string(proofBody))
+	s.ServeHTTP(httptest.NewRecorder(), req)
+
+	s.mu.Lock()
+	_, stillPresent := s.issued[desc.Nonce]
+	s.mu.Unlock()
+	if stillPresent {
+		t.Fatal("expired nonce was not reclaimed on attempted use")
+	}
+}
