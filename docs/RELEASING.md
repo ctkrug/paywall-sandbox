@@ -21,3 +21,11 @@ Releases are cut from a git tag, not a branch or a manual build step.
 
 No manual cross-compilation or upload step is needed — pushing the tag is
 the entire release.
+
+## Testing a release locally
+
+`make snapshot` runs GoReleaser in snapshot mode: it builds every archive
+the real release would, into `dist/`, without publishing anything or
+requiring a tag. Use it to sanity-check a `.goreleaser.yaml` change before
+it ships on the next tag push. CI also runs `goreleaser check` (schema
+validation only, no build) on every push.
