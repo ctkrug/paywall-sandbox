@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -76,9 +78,20 @@ func runServe(args []string) {
 	log.Fatal(http.ListenAndServe(*addr, mockserver.LogRequests(logger, srv)))
 }
 
+// loadServeRules resolves the rule set serve runs with. Flag-built rules
+// are round-tripped through mockserver.LoadRules (the same validation
+// --config goes through), so a typo'd flag like --amount 0 or --asset ""
+// is rejected up front instead of silently listening with a nonsensical
+// price.
 func loadServeRules(configPath, path string, amount uint64, asset, recipient string) ([]mockserver.Rule, error) {
-	if configPath == "" {
-		return []mockserver.Rule{{Path: path, Amount: amount, Asset: asset, Recipient: recipient}}, nil
+	if configPath != "" {
+		return mockserver.LoadRulesFile(configPath)
 	}
-	return mockserver.LoadRulesFile(configPath)
+
+	cfg := mockserver.Config{Rules: []mockserver.RuleConfig{{Path: path, Amount: amount, Asset: asset, Recipient: recipient}}}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("encoding flag-derived rule: %w", err)
+	}
+	return mockserver.LoadRules(bytes.NewReader(data))
 }
