@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tollgate — Test 402 payment flows without real money</title>
+  <meta name="description" content="A local mock server and CLI for testing HTTP 402 / x402 pay-per-request payment flows. Challenge, settle, and retry against a fake gate, and script it as a CI check. No wallet, no settlement network, no money." />
+  <meta property="og:title" content="Tollgate — Test 402 payment flows without real money" />
+  <meta property="og:description" content="A local mock server and CLI for the HTTP 402 / x402 pay-per-request handshake. Develop and test your paywall before wiring up real settlement." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1116;
+      --surface-1: #161b22;
+      --surface-2: #1e242d;
+      --border: #2a313b;
+      --text: #e8ebf0;
+      --muted: #9aa5b4;
+      --accent: #f2b544;
+      --accent-2: #3fbfa3;
+      --danger: #e5645b;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --ui: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      --sp: 8px;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--ui);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    code, pre { font-family: var(--mono); }
+
+    /* Header / wordmark */
+    header {
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: rgba(14, 17, 22, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .bar { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .wordmark { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+    .wordmark svg { display: block; }
+    .nav-cta {
+      font-family: var(--mono); font-size: 14px; font-weight: 500;
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); transition: border-color 160ms ease-out, background 160ms ease-out;
+    }
+    .nav-cta:hover { border-color: var(--accent); background: var(--surface-1); text-decoration: none; }
+
+    /* Hero */
+    .hero { padding: 72px 0 48px; }
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    .tag {
+      display: inline-block; font-family: var(--mono); font-size: 12.5px; color: var(--accent);
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; margin-bottom: 20px;
+    }
+    h1 { font-family: var(--mono); font-weight: 700; font-size: 44px; line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 18px; }
+    h1 .paid { color: var(--accent-2); }
+    .subhead { font-size: 18px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      font-family: var(--mono); font-weight: 600; font-size: 15px;
+      padding: 12px 20px; border-radius: 8px; transition: transform 160ms ease-out, box-shadow 160ms ease-out, background 160ms ease-out;
+    }
+    .btn-primary { background: var(--accent); color: #1a1206; box-shadow: 0 0 0 rgba(242,181,68,0); }
+    .btn-primary:hover { text-decoration: none; box-shadow: 0 6px 24px rgba(242,181,68,0.28); }
+    .btn-primary:active { transform: translateY(1px); }
+    .btn-ghost { border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--accent); text-decoration: none; }
+
+    /* Terminal */
+    .term {
+      background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .term-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot.r { background: #e5645b; } .dot.y { background: #f2b544; } .dot.g { background: #3fbfa3; }
+    .term-title { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-left: 6px; }
+    .term pre { margin: 0; padding: 18px 18px 22px; font-size: 13px; line-height: 1.75; overflow-x: auto; }
+    .c-prompt { color: var(--accent); } .c-cmd { color: var(--text); }
+    .c-dim { color: var(--muted); } .c-402 { color: var(--danger); font-weight: 500; }
+    .c-200 { color: var(--accent-2); font-weight: 500; } .c-key { color: var(--accent); }
+
+    /* Sections */
+    section { padding: 56px 0; border-top: 1px solid var(--border); }
+    .section-label { font-family: var(--mono); font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 8px; }
+    h2 { font-family: var(--mono); font-weight: 700; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 32px; }
+    h3 { font-family: var(--mono); font-weight: 700; font-size: 17px; margin: 0 0 8px; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; transition: border-color 160ms ease-out, transform 160ms ease-out; }
+    .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .card .mono-mark { font-family: var(--mono); color: var(--accent); font-size: 13px; font-weight: 700; }
+    .card p { color: var(--muted); margin: 8px 0 0; font-size: 15px; }
+
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .step h3 { color: var(--text); }
+    .step p { color: var(--muted); margin: 0 0 12px; }
+    pre.block { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-size: 13px; line-height: 1.7; overflow-x: auto; margin: 0 0 12px; }
+    pre.block .c-prompt { color: var(--accent); }
+
+    /* SEO / FAQ prose */
+    .prose { max-width: 72ch; }
+    .prose p { color: var(--muted); }
+    .prose strong { color: var(--text); font-weight: 600; }
+    .faq { margin-top: 32px; }
+    details { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); margin-bottom: 10px; }
+    details summary { cursor: pointer; padding: 14px 18px; font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); list-style: none; transition: color 160ms ease-out; }
+    details summary:hover { color: var(--accent); }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::before { content: "+"; color: var(--accent); margin-right: 10px; font-weight: 700; }
+    details[open] summary::before { content: "\2212"; }
+    details .answer { padding: 0 18px 16px; color: var(--muted); }
+
+    footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+    .foot-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    footer .more { font-family: var(--mono); }
+
+    @media (max-width: 860px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+      .features { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      h1 { font-size: 34px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; scroll-behavior: auto; }
+      .card:hover { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap bar">
+      <div class="wordmark">
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+          <rect x="1" y="1" width="24" height="24" rx="6" fill="none" stroke="#f2b544" stroke-width="1.5"/>
+          <circle cx="13" cy="13" r="6" fill="none" stroke="#f2b544" stroke-width="1.5"/>
+          <path d="M13 9.5v7M11 11.5h3a1.5 1.5 0 0 1 0 3h-3M11 13h4" stroke="#f2b544" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span>Tollgate</span>
+      </div>
+      <a class="nav-cta" href="https://github.com/ctkrug/paywall-sandbox">View on GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" style="border-top:none">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="tag">HTTP 402 · x402 pay-per-request</span>
+          <h1>Take a <span class="paid">402</span> to a paid <span class="paid">200</span> without real money.</h1>
+          <p class="subhead">Tollgate is a local mock server and CLI for the HTTP 402 payment handshake. Stand up a fake paywall, drive the challenge to settle to retry loop, and script it as a CI check, before you touch a wallet or a settlement network.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="https://github.com/ctkrug/paywall-sandbox">View on GitHub</a>
+            <a class="btn btn-ghost" href="#quickstart">Quick start</a>
+          </div>
+        </div>
+        <div class="term" role="img" aria-label="Terminal showing a 402 challenge being settled and retried into a 200 response">
+          <div class="term-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="term-title">paywall-sandbox request --verbose</span>
+          </div>
+<pre><span class="c-prompt">$</span> <span class="c-cmd">paywall-sandbox request \
+    --url http://localhost:8402/paid --verbose</span>
+<span class="c-dim">--- initial request ---</span>
+GET /paid -> <span class="c-402">402 Payment Required</span>
+<span class="c-dim">--- 402 challenge received ---</span>
+<span class="c-dim">descriptor:</span> {Amount:<span class="c-key">100</span> Asset:<span class="c-key">USDC</span>
+            Recipient:0xsandbox Nonce:9f1c... }
+<span class="c-dim">--- retry with proof ---</span>
+<span class="c-dim">proof:</span> {Nonce:9f1c... Scheme:<span class="c-key">fake</span> Signature:ok}
+GET /paid -> <span class="c-200">200 OK</span>
+</pre>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <p class="section-label">What it does</p>
+        <h2>Everything the handshake needs, nothing that costs money.</h2>
+        <div class="features">
+          <div class="card">
+            <span class="mono-mark">serve</span>
+            <h3>A mock 402 origin</h3>
+            <p>Challenge any route with a real payment descriptor: amount, asset, recipient, nonce, and expiry. Configure routes from flags or a JSON rule set, with exact-path or <code>/*</code> prefix matching.</p>
+          </div>
+          <div class="card">
+            <span class="mono-mark">request</span>
+            <h3>A client that plays both sides</h3>
+            <p>Run the full challenge to pay to retry loop against any target, mock or real. <code>--verbose</code> traces every header, descriptor field, and proof, so you see exactly what a real client sends.</p>
+          </div>
+          <div class="card">
+            <span class="mono-mark">test</span>
+            <h3>Scenarios as CI checks</h3>
+            <p>Write a JSON scenario of expected challenges and outcomes. <code>test</code> runs it against an in-process server and exits non-zero on any mismatch, so a broken paywall fails the build.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <div class="wrap">
+        <p class="section-label">Quick start</p>
+        <h2>Two commands to a settled request.</h2>
+        <div class="steps">
+          <div class="step">
+            <h3>1. Stand up a paywall</h3>
+            <p>Build the binary and serve one protected route.</p>
+<pre class="block"><span class="c-prompt">$</span> go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
+<span class="c-prompt">$</span> ./bin/paywall-sandbox serve \
+    --path /paid --amount 100 --asset USDC
+paywall-sandbox listening on :8402 (1 rule(s))</pre>
+          </div>
+          <div class="step">
+            <h3>2. Drive the loop</h3>
+            <p>Point the client at it and watch the 402 settle to a 200.</p>
+<pre class="block"><span class="c-prompt">$</span> ./bin/paywall-sandbox request \
+    --url http://localhost:8402/paid
+GET http://localhost:8402/paid -> 200</pre>
+            <p>Swap <code>--scheme hmac-sha256 --hmac-key &lt;secret&gt;</code> to settle with a shared-secret signature instead of the unconditional <code>fake</code> scheme.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap prose">
+        <p class="section-label">Background</p>
+        <h2>Why a sandbox for HTTP 402?</h2>
+        <p><strong>HTTP 402 Payment Required</strong> sat unused in the spec for three decades. A recent wave of pay-per-call APIs, led by the x402 pattern, is finally giving it a concrete shape: a server answers a request with <code>402</code> and a payment descriptor, the client (or an AI agent acting for it) settles payment out of band, then retries the request with proof attached. The idea is clean, but there is no dominant SDK yet, and the wire format is still being pieced together from scattered specs and reference code.</p>
+        <p>That leaves a gap. If you are building the server side, you want to check that your descriptor is well formed, your nonces do not leak, and expired challenges are rejected. If you are building the client or agent side, you want to confirm you parse the challenge, attach a valid proof, and retry correctly. Doing either against real settlement means a wallet, a network, live funds, and no easy way to script the edge cases: a replayed proof, a challenge that expired one instant ago, a malformed descriptor from a hostile origin.</p>
+        <p><strong>Tollgate removes real money from that loop.</strong> The mock server issues genuine 402 challenges with configurable terms and consumes each proof exactly once, so replays fail the way they should. The client drives the whole exchange and prints every step. Scenarios pin the expected behavior in a JSON file that runs in CI. You develop against the exact shape of the protocol, then point the same client at your real origin when settlement is wired up. It is a single static Go binary with no runtime dependencies, so it drops into a container or a CI job without setup.</p>
+
+        <div class="faq">
+          <h2>FAQ</h2>
+          <details>
+            <summary>Does Tollgate move real money or connect to a blockchain?</summary>
+            <div class="answer">No. It is entirely offline. The <code>fake</code> scheme accepts any proof once the nonce and expiry check out, and <code>hmac-sha256</code> verifies a shared-secret signature. Both simulate settlement so you can exercise the handshake without a wallet, a network, or funds.</div>
+          </details>
+          <details>
+            <summary>What is the difference between HTTP 402 and x402?</summary>
+            <div class="answer">HTTP 402 is the status code reserved in the HTTP spec for "Payment Required." x402 is a modern convention for using it: a 402 response carries a payment descriptor, the client settles out of band and retries with proof. Tollgate models this challenge to pay to retry loop so you can test against it directly.</div>
+          </details>
+          <details>
+            <summary>Can I test my own client against it, not just the bundled one?</summary>
+            <div class="answer">Yes. Run <code>serve</code> and point any HTTP client at it. The challenge lives in the <code>X-Payment-Required</code> header and body; the client returns proof in the <code>X-Payment</code> header on retry. The full wire format is in <code>docs/PROTOCOL.md</code>.</div>
+          </details>
+          <details>
+            <summary>How do I use it as a CI check?</summary>
+            <div class="answer">Write a scenario JSON describing the requests and expected outcomes, then run <code>paywall-sandbox test scenario.json</code>. It starts and tears down its own server and exits non-zero on any failed assertion, so it works as a build step with no service left running.</div>
+          </details>
+          <details>
+            <summary>What do I need to run it?</summary>
+            <div class="answer">Go 1.22 or newer to build from source, or a prebuilt binary from the releases page. It is a single static binary with no runtime dependencies.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-row">
+      <span>Tollgate · MIT licensed · <a href="https://github.com/ctkrug/paywall-sandbox">github.com/ctkrug/paywall-sandbox</a></span>
+      <span class="more">More by Charlie Krug &rarr; <a href="https://apps.charliekrug.com">apps.charliekrug.com</a></span>
+    </div>
+  </footer>
+</body>
+</html>
