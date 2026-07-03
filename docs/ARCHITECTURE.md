@@ -104,6 +104,12 @@ go test ./...
 
 `make build|test|run|fmt|vet|lint` wrap the above; see `Makefile`.
 
+`cmd/paywall-sandbox`'s subcommand handlers (`runServe`/`runRequest`/
+`runTest`) call `os.Exit` directly on error, so `cli_test.go` covers their
+exit-code behavior black-box: `TestMain` builds the binary once and tests
+run it as a subprocess. `dispatch()`, `loadServeRules`, and `resolveSigner`
+are pure enough to unit test in-process instead.
+
 ## Release
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`, which invokes
