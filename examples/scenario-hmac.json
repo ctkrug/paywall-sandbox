@@ -1,0 +1,16 @@
+{
+  "name": "hmac-sha256 scheme settles, wrong key would not",
+  "hmacKey": "shared-secret",
+  "rules": [
+    {"path": "/paid", "amount": 500, "asset": "USD", "recipient": "acct-premium"}
+  ],
+  "steps": [
+    {
+      "name": "GET /paid settles with a correctly-keyed hmac-sha256 proof",
+      "method": "GET",
+      "path": "/paid",
+      "scheme": "hmac-sha256",
+      "expect": {"paid": true, "finalStatus": 200}
+    }
+  ]
+}
