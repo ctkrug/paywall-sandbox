@@ -25,3 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   on any failure so it doubles as a CI check.
 - Release automation: a `v*`-tag-triggered GitHub Actions workflow that
   runs GoReleaser to publish cross-compiled binaries and checksums.
+- `request --timeout` (default `10s`) so settling against an unresponsive
+  real target can't hang the CLI forever.
+
+### Fixed
+
+- `mockserver.Server` no longer accumulates one map entry per issued
+  challenge forever; expired, never-retried nonces are now reclaimed.
