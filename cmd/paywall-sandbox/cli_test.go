@@ -120,6 +120,26 @@ func TestCLIRequestMissingURLExitsNonZero(t *testing.T) {
 	}
 }
 
+func TestCLIRequestTimesOutAgainstUnresponsiveServer(t *testing.T) {
+	unblock := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-unblock // never respond within the test
+	}))
+	// srv.Close() waits for the in-flight handler above to return, so it
+	// must run after unblock is closed, not before: defer order is LIFO.
+	defer srv.Close()
+	defer close(unblock)
+
+	cmd := exec.Command(binPath, "request", "--url", srv.URL, "--timeout", "200ms")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("request against an unresponsive server: want non-zero exit, got success (%s)", out)
+	}
+	if !strings.Contains(string(out), "deadline exceeded") {
+		t.Errorf("request output = %q, want it to mention the timeout", out)
+	}
+}
+
 func TestCLIRequestSettlesAgainstMockServer(t *testing.T) {
 	srv := httptest.NewServer(&mockserver.Server{
 		Rules: []mockserver.Rule{{Path: "/paid", Amount: 100, Asset: "USDC", Recipient: "0xsandbox"}},
