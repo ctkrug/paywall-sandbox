@@ -22,6 +22,7 @@ func TestRuleMatches(t *testing.T) {
 		{"wildcard matches nested path", Rule{Path: "/api/*"}, "GET", "/api/v1/widgets", true},
 		{"wildcard rejects sibling prefix", Rule{Path: "/api/*"}, "GET", "/apikeys", false},
 		{"wildcard rejects unrelated path", Rule{Path: "/api/*"}, "GET", "/free", false},
+		{"bare wildcard protects every path", Rule{Path: "/*"}, "GET", "/anything/nested", true},
 	}
 
 	for _, tc := range cases {
