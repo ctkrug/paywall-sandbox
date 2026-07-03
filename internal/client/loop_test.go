@@ -106,3 +106,20 @@ func TestLoopDoReturnsSignerError(t *testing.T) {
 		t.Fatal("Do() error = nil, want signer error surfaced")
 	}
 }
+
+// TestLoopDoReturnsErrorForMalformedDescriptor exercises talking to a
+// non-sandbox 402 origin that doesn't speak this protocol correctly: no
+// X-Payment-Required header and a body that isn't a valid descriptor. Do
+// must surface a clear error instead of panicking or silently proceeding.
+func TestLoopDoReturnsErrorForMalformedDescriptor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusPaymentRequired)
+		_, _ = w.Write([]byte("not a json descriptor"))
+	}))
+	defer srv.Close()
+
+	loop := &Loop{Signer: FakeSigner{}}
+	if _, err := loop.Do(context.Background(), http.MethodGet, srv.URL); err == nil {
+		t.Fatal("Do() error = nil, want error for a malformed 402 descriptor")
+	}
+}
