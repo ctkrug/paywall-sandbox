@@ -14,7 +14,10 @@ type Rule struct {
 	// Method restricts the rule to a single HTTP method. Empty matches any
 	// method.
 	Method string
-	// Path is the exact request path this rule applies to.
+	// Path is the request path this rule applies to. A trailing "/*"
+	// matches the prefix itself or anything nested under it (e.g. "/api/*"
+	// matches "/api", "/api/foo", and "/api/foo/bar"); anything else must
+	// match the request path exactly.
 	Path string
 	// Amount is the price in the smallest unit of Asset.
 	Amount uint64
@@ -29,5 +32,16 @@ func (r Rule) Matches(req *http.Request) bool {
 	if r.Method != "" && !strings.EqualFold(r.Method, req.Method) {
 		return false
 	}
-	return r.Path == req.URL.Path
+	return matchPath(r.Path, req.URL.Path)
+}
+
+// matchPath reports whether path satisfies pattern. A pattern ending in
+// "/*" matches the prefix itself or anything nested under it; any other
+// pattern must match path exactly.
+func matchPath(pattern, path string) bool {
+	prefix, ok := strings.CutSuffix(pattern, "/*")
+	if !ok {
+		return pattern == path
+	}
+	return path == prefix || strings.HasPrefix(path, prefix+"/")
 }
