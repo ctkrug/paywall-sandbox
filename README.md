@@ -1,11 +1,14 @@
-# Paywall Sandbox
+# Tollgate
+
+**▶ Live demo — [apps.charliekrug.com/paywall-sandbox](https://apps.charliekrug.com/paywall-sandbox/)**
 
 [![CI](https://github.com/ctkrug/paywall-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/ctkrug/paywall-sandbox/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A local mock server and CLI for testing HTTP 402 micropayment flows — the
-`x402`-style "pay-per-request" pattern — against your app before you wire up
-real settlement.
+**Test 402 payment flows without real money.** Tollgate is a local mock server
+and CLI for the HTTP 402 payment handshake, the `x402`-style "pay-per-request"
+pattern. Stand up a fake paywall, drive the challenge to settle to retry loop,
+and script it as a CI check, before you wire up real settlement.
 
 ## Why
 
@@ -17,7 +20,7 @@ the request with proof of payment attached. There's no dominant SDK yet, and
 the wire format is still being ferreted out from scattered specs and
 reference implementations.
 
-Paywall Sandbox lets you develop and test against that flow **without**
+Tollgate lets you develop and test against that flow **without**
 touching a real settlement network, a real wallet, or real money:
 
 - Stand up a mock origin server that challenges arbitrary routes with `402`
@@ -138,3 +141,7 @@ checked off. See [`docs/VISION.md`](docs/VISION.md) for the design.
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+---
+
+More of Charlie's projects → [apps.charliekrug.com](https://apps.charliekrug.com)
