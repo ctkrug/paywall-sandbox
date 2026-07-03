@@ -1,4 +1,4 @@
-.PHONY: build test run fmt vet lint clean
+.PHONY: build test run fmt vet lint snapshot clean
 
 build:
 	go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
@@ -18,5 +18,10 @@ vet:
 lint:
 	golangci-lint run ./...
 
+# snapshot builds the release artifacts locally without publishing, to
+# sanity-check .goreleaser.yaml before pushing a tag.
+snapshot:
+	goreleaser release --snapshot --clean --skip=publish
+
 clean:
-	rm -rf bin/
+	rm -rf bin/ dist/
