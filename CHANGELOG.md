@@ -19,3 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   addition to exact paths.
 - Pluggable proof schemes: `mockserver.Verifier` / `client.Signer`
   interfaces, plus a second `hmac-sha256` scheme alongside `fake`.
+- Scenario scripting: a declarative JSON scenario format (`internal/scenario`)
+  and a `test <scenario>` CLI subcommand that runs a sequence of requests
+  against an in-process server and asserts on the outcome, exiting non-zero
+  on any failure so it doubles as a CI check.
