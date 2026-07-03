@@ -19,12 +19,15 @@ internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
   `X-Payment`) both sides key off. Anything that needs to speak the wire
   format imports this package; it imports nothing else in this repo.
 - **`internal/mockserver`** — the server side. `Rule` describes one
-  protected route (method/path/price); `Server` is an `http.Handler` that
-  challenges unmatched-proof requests and forwards matched-proof ones to
-  `Next`. Nonces are issued and consumed in an in-memory map guarded by a
-  mutex — one-time use, hard TTL, no persistence (see `docs/PROTOCOL.md` for
-  why). `LogRequests` is a middleware wrapping any handler with structured
-  request logging.
+  protected route (method/path/price), matching either an exact path or a
+  `/*`-suffixed prefix; `Server` is an `http.Handler` that challenges
+  unmatched-proof requests and forwards matched-proof ones to `Next`.
+  Nonces are issued and consumed in an in-memory map guarded by a mutex —
+  one-time use, hard TTL, no persistence (see `docs/PROTOCOL.md` for why).
+  `LogRequests` is a middleware wrapping any handler with structured
+  request logging. `LoadRules`/`LoadRulesFile` (`config.go`) parse a JSON
+  rule set (see `examples/rules.json`) into `[]Rule`, validating every
+  entry.
 - **`internal/client`** — the CLI client side. `Signer` builds a `Proof`
   from a received `Descriptor`; `FakeSigner` is the v1 (and only)
   implementation. `Loop` drives the exchange: send, detect a 402, decode
@@ -33,7 +36,8 @@ internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
   `internal/paywall` and stdlib `net/http`, so it can run against any
   target, not just `internal/mockserver`.
 - **`cmd/paywall-sandbox`** — thin CLI wrapper. `serve` stands up a
-  `mockserver.Server` with a single rule from flags; `request` drives a
+  `mockserver.Server` with rules either from flags (one rule) or
+  `--config <file>` (`mockserver.LoadRulesFile`); `request` drives a
   `client.Loop` against `--url`; `version` prints the build version.
 
 ## Data flow (server side)
@@ -72,8 +76,8 @@ go test ./...
 - New proof schemes: keep `paywall.Proof.Scheme` as the discriminator;
   `mockserver.Server.acceptProof` is the only place that currently
   hardcodes `FakeScheme` — see `docs/BACKLOG.md`'s pluggable-signer story.
-- New rule sources (config file, wildcard paths): `internal/mockserver`,
-  extending `Rule`/`Rule.Matches` and adding a loader, not touching
-  `Server`.
 - New signer schemes: implement `client.Signer` and wire a `--scheme` flag
   in `cmd/paywall-sandbox/request.go` to select among them.
+- New rule config fields (e.g. per-rule TTL): extend `RuleConfig`/`Rule`
+  and `validateRuleConfig` in `internal/mockserver/config.go`; `Server`
+  itself doesn't need to change.
