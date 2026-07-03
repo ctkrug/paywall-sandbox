@@ -26,6 +26,8 @@ func main() {
 		fmt.Println("paywall-sandbox " + version)
 	case "serve":
 		runServe(os.Args[2:])
+	case "request":
+		runRequest(os.Args[2:])
 	default:
 		usage()
 		os.Exit(1)
@@ -33,7 +35,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: paywall-sandbox <version|serve> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: paywall-sandbox <version|serve|request> [flags]")
 }
 
 func runServe(args []string) {
