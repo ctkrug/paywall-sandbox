@@ -39,3 +39,20 @@ the wire format these stories implement against.
 - [x] Expand the README with full CLI usage examples once `request` and
       `test` subcommands exist
 - [x] Add a release workflow that builds and publishes versioned binaries
+
+## v1 status
+
+All v1 epics above are complete. Remaining ideas are v2+ and intentionally
+out of scope for this build — see below.
+
+## Future ideas (v2+)
+
+- A real (not `fake`/`hmac-sha256`) settlement-backed proof scheme, e.g.
+  verifying an on-chain transfer receipt — see "Adding a proof scheme" in
+  `PROTOCOL.md` for the extension point.
+- Scenario assertions beyond `paid`/`finalStatus`, e.g. matching a response
+  header or body substring (`scenario.Expect` in
+  `internal/scenario/run.go` already documents this as its extension
+  point).
+- Clock-skew tolerance for `expiresAt`, instead of the current hard cutoff
+  (see "No expiry grace period" in `PROTOCOL.md`).
