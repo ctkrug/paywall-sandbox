@@ -17,9 +17,9 @@ the wire format these stories implement against.
 
 ## Epic: configurable rule sets
 
-- [ ] Load rule sets from a JSON config file instead of only CLI flags
-- [ ] Support path-prefix/wildcard route matching (today: exact path only)
-- [ ] Add an example config file and docs for authoring rule sets
+- [x] Load rule sets from a JSON config file instead of only CLI flags
+- [x] Support path-prefix/wildcard route matching (today: exact path only)
+- [x] Add an example config file and docs for authoring rule sets
 
 ## Epic: additional proof schemes
 
