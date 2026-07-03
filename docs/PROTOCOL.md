@@ -49,11 +49,13 @@ standard. This is the shape `paywall-sandbox` implements and tests against.
 ```
 
 `nonce` must match a descriptor the server actually issued and not yet
-consumed. `scheme` identifies how `signature` should be interpreted —
-this sandbox ships exactly one scheme, `fake`, which the server accepts
-unconditionally once the nonce checks out. It exists to exercise the
-protocol shape end to end; it is **not** a real payment mechanism and
-proves nothing about actual settlement. Real schemes (on-chain transfer
+consumed. `scheme` identifies how `signature` should be interpreted and is
+checked by a pluggable `Verifier` (see "Adding a proof scheme" below).
+This sandbox ships two: `fake`, which the server accepts unconditionally
+once the nonce checks out, and `hmac-sha256`, which checks `signature`
+against a shared secret. Both are explicitly **not** real payment
+mechanisms and prove nothing about actual settlement — they exist to
+exercise the protocol shape end to end. Real schemes (on-chain transfer
 receipts, signed settlement attestations, etc.) are future backlog work —
 see [`BACKLOG.md`](BACKLOG.md).
 
@@ -82,6 +84,27 @@ repo alongside its tests:
 | `recipient` | Address/account the payment must settle to. Must not be empty.   |
 
 See [`examples/rules.json`](../examples/rules.json) for a runnable example.
+
+## Adding a proof scheme
+
+`nonce`/expiry replay protection is scheme-agnostic; a scheme only needs to
+define how `signature` is produced and checked. To add one:
+
+1. **Server side** (`internal/mockserver`): implement `Verifier` —
+   `Verify(paywall.Descriptor, paywall.Proof) error` — and register it
+   under your scheme name in `Server.Verifiers`. `HMACVerifier`
+   (`hmac_verifier.go`) is a worked example: it checks `Signature` against
+   `hex(HMAC-SHA256(Key, Descriptor.Nonce))`.
+2. **Client side** (`internal/client`): implement `Signer` —
+   `Sign(paywall.Descriptor) (paywall.Proof, error)` — that builds a
+   matching proof. `HMACSigner` mirrors `HMACVerifier`'s computation.
+3. Wire the new `Signer`/scheme into the `request` subcommand if it should
+   be selectable from the CLI (today `request` always uses `FakeSigner`).
+
+`FakeScheme` and `HMACScheme` are each defined independently in both
+packages (not shared via import) so `internal/client` stays decoupled from
+`internal/mockserver` — it can drive any target that speaks a given
+scheme, mock or real.
 
 ## Design choices and open questions
 
