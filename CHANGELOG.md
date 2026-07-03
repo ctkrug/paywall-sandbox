@@ -11,3 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Initial repo scaffold: `paywall` descriptor/proof types, `mockserver`
   402 challenge/response handler, and a `serve` CLI subcommand.
+- `internal/client` package implementing the challenge → pay → retry
+  loop, and a `request` CLI subcommand (with `--verbose` tracing) that
+  drives it against any target, mock or real.
+- Configurable rule sets: `serve --config <file>` loads protected routes
+  from a JSON file, and `Rule.Path` supports `/*` prefix matching in
+  addition to exact paths.
+- Pluggable proof schemes: `mockserver.Verifier` / `client.Signer`
+  interfaces, plus a second `hmac-sha256` scheme alongside `fake`.
