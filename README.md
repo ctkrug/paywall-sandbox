@@ -48,6 +48,12 @@ touching a real settlement network, a real wallet, or real money:
   header, descriptor field, and proof exchanged, so you can see exactly what
   a real client would need to do.
 
+## Install
+
+Download a prebuilt binary from the [releases page](https://github.com/ctkrug/paywall-sandbox/releases)
+(see [`docs/RELEASING.md`](docs/RELEASING.md) for how those are cut), or
+build from source with the `go build` shown in Quick start below.
+
 ## Quick start
 
 ```console
