@@ -6,13 +6,13 @@ the wire format these stories implement against.
 
 ## Epic: CLI client (challenge/pay/retry)
 
-- [ ] Add a `fake` payment proof signer that builds a `Proof` from a
+- [x] Add a `fake` payment proof signer that builds a `Proof` from a
       received `Descriptor`
-- [ ] Implement the client-side challenge → pay → retry loop as a reusable
+- [x] Implement the client-side challenge → pay → retry loop as a reusable
       package (initial request, detect 402, build proof, retry once)
-- [ ] Wire a `request` subcommand into the CLI so the loop can be driven
+- [x] Wire a `request` subcommand into the CLI so the loop can be driven
       against any URL, mock or real
-- [ ] Add `--verbose` inspection output to the request loop (print every
+- [x] Add `--verbose` inspection output to the request loop (print every
       header/descriptor/proof exchanged)
 
 ## Epic: configurable rule sets
