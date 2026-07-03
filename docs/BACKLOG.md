@@ -23,11 +23,11 @@ the wire format these stories implement against.
 
 ## Epic: additional proof schemes
 
-- [ ] Define a pluggable `Signer`/`Verifier` interface so schemes beyond
+- [x] Define a pluggable `Signer`/`Verifier` interface so schemes beyond
       `fake` can be registered without touching `mockserver.Server`
-- [ ] Add a second, HMAC-based local proof scheme as a real (if still
+- [x] Add a second, HMAC-based local proof scheme as a real (if still
       offline) settlement simulation
-- [ ] Document how to add a new scheme in `PROTOCOL.md`
+- [x] Document how to add a new scheme in `PROTOCOL.md`
 
 ## Epic: scenario scripting & polish
 
