@@ -31,11 +31,11 @@ the wire format these stories implement against.
 
 ## Epic: scenario scripting & polish
 
-- [ ] Design a declarative scenario file format describing an expected
+- [x] Design a declarative scenario file format describing an expected
       challenge/response sequence
-- [ ] Add a `paywall-sandbox test <scenario>` command that runs a scenario
+- [x] Add a `paywall-sandbox test <scenario>` command that runs a scenario
       and exits non-zero on any assertion failure
-- [ ] Check in an example scenario file runnable from CI
-- [ ] Expand the README with full CLI usage examples once `request` and
+- [x] Check in an example scenario file runnable from CI
+- [x] Expand the README with full CLI usage examples once `request` and
       `test` subcommands exist
 - [ ] Add a release workflow that builds and publishes versioned binaries
