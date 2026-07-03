@@ -130,9 +130,9 @@ file format.
 ## Status
 
 The core challenge/response loop, configurable rule sets, pluggable proof
-schemes, and scenario scripting are implemented. See
-[`docs/VISION.md`](docs/VISION.md) for the design and
-[`docs/BACKLOG.md`](docs/BACKLOG.md) for what's left.
+schemes, scenario scripting, and versioned-release automation are all
+implemented — every v1 story in [`docs/BACKLOG.md`](docs/BACKLOG.md) is
+checked off. See [`docs/VISION.md`](docs/VISION.md) for the design.
 
 ## License
 
