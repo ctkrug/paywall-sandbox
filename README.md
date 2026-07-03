@@ -1,5 +1,8 @@
 # Paywall Sandbox
 
+[![CI](https://github.com/ctkrug/paywall-sandbox/actions/workflows/ci.yml/badge.svg)](https://github.com/ctkrug/paywall-sandbox/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A local mock server and CLI for testing HTTP 402 micropayment flows — the
 `x402`-style "pay-per-request" pattern — against your app before you wire up
 real settlement.
