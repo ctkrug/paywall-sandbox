@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {
+      "path": "/paid",
+      "amount": 100,
+      "asset": "USDC",
+      "recipient": "0xsandbox"
+    },
+    {
+      "method": "POST",
+      "path": "/api/premium/*",
+      "amount": 500,
+      "asset": "USD",
+      "recipient": "acct-premium"
+    }
+  ]
+}
