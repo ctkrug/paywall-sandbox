@@ -51,6 +51,15 @@ func TestDescriptorExpired(t *testing.T) {
 	}
 }
 
+func TestDescriptorNotExpiredAtExactExpiresAt(t *testing.T) {
+	now := time.Now()
+	d := validDescriptor()
+	d.ExpiresAt = now
+	if d.Expired(now) {
+		t.Fatal("expected descriptor to still be valid at the exact instant ExpiresAt occurs")
+	}
+}
+
 func TestDescriptorRoundTrip(t *testing.T) {
 	want := validDescriptor()
 	data, err := want.Encode()
