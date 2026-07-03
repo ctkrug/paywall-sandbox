@@ -11,6 +11,7 @@ cmd/paywall-sandbox/    CLI entrypoint: subcommand dispatch + flag parsing
 internal/paywall/       Wire types shared by both sides: Descriptor, Proof
 internal/mockserver/    The mock 402 server: Rule matching, Server, logging
 internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
+internal/scenario/      Declarative scenario files: load, validate, run, report
 ```
 
 - **`internal/paywall`** — no dependencies beyond stdlib. Defines
@@ -39,10 +40,26 @@ internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
   `--verbose` output. Only depends on `internal/paywall` and stdlib
   `net/http`, so it can run against any target, not just
   `internal/mockserver`.
+- **`internal/scenario`** — declarative scenario files (`docs/PROTOCOL.md`
+  has the format). `Scenario`/`Step`/`Expect` are the JSON shape;
+  `Load`/`LoadFile` parse and `Validate` it (delegating rule validation to
+  `mockserver.LoadRules` by round-tripping `Rules` through JSON, so a
+  scenario's rule set can never drift from what `serve --config` accepts).
+  `Run` starts one `httptest.Server` per scenario (`newServer`, wired with a
+  `Verifier` for `fake` always and `hmac-sha256` whenever `HMACKey` is set),
+  drives every `Step` through a `client.Loop` (`signerFor` resolves the
+  step's scheme to a `client.Signer`), and diffs the actual
+  `Paid`/`FinalStatusCode` against `Expect` (`checkExpect`). A step's
+  failure is recorded in its `StepResult`, not fatal — the rest of the
+  scenario still runs. `Report.String()` renders the PASS/FAIL summary
+  `test` prints.
 - **`cmd/paywall-sandbox`** — thin CLI wrapper. `serve` stands up a
   `mockserver.Server` with rules either from flags (one rule) or
   `--config <file>` (`mockserver.LoadRulesFile`); `request` drives a
-  `client.Loop` against `--url`; `version` prints the build version.
+  `client.Loop` against `--url` (`resolveSigner` maps `--scheme`/
+  `--hmac-key` to a `client.Signer`); `test` loads a scenario file and runs
+  it via `internal/scenario`, exiting non-zero on any step failure;
+  `version` prints the build version.
 
 ## Data flow (server side)
 
@@ -65,11 +82,23 @@ Loop.Do → send initial request
                                → return result (Paid=true)
 ```
 
+## Data flow (scenario)
+
+```
+scenario.Run → newServer (httptest.Server from Scenario.Rules/Verifiers)
+                → for each Step:
+                    signerFor(Step.Scheme) -> client.Signer
+                    client.Loop.Do -> client.Result
+                    checkExpect(Step.Expect, Result) -> "" (pass) or mismatch description
+                → Report{Steps: []StepResult}
+```
+
 ## Build / run / test
 
 ```
 go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
 ./bin/paywall-sandbox serve --path /paid --amount 100 --asset USDC
+./bin/paywall-sandbox test examples/scenario.json
 go test ./...
 ```
 
@@ -81,9 +110,9 @@ go test ./...
   `docs/PROTOCOL.md`'s "Adding a proof scheme"); `HMACVerifier`/
   `HMACSigner` are the worked example. Neither `Server` nor `Loop` need to
   change.
-- Selecting a signer from the CLI: `request` always uses `FakeSigner`
-  today; wire a `--scheme` flag in `cmd/paywall-sandbox/request.go` to
-  choose among registered `client.Signer`s.
 - New rule config fields (e.g. per-rule TTL): extend `RuleConfig`/`Rule`
   and `validateRuleConfig` in `internal/mockserver/config.go`; `Server`
   itself doesn't need to change.
+- New scenario assertions (e.g. asserting on a response header): extend
+  `scenario.Expect` and `checkExpect` in `internal/scenario/run.go`;
+  `Scenario`/`Step`/`Run` don't need to change.
