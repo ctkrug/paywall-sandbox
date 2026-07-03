@@ -75,6 +75,28 @@ func (erroringSigner) Sign(paywall.Descriptor) (paywall.Proof, error) {
 	return paywall.Proof{}, errors.New("signer: refused to sign")
 }
 
+func TestLoopDoPaysChallengeWithHMACScheme(t *testing.T) {
+	key := []byte("shared-secret")
+	srv := httptest.NewServer(&mockserver.Server{
+		Rules:     []mockserver.Rule{{Path: "/paid", Amount: 100, Asset: "USDC", Recipient: "0xsandbox"}},
+		Verifiers: map[string]mockserver.Verifier{mockserver.HMACScheme: mockserver.HMACVerifier{Key: key}},
+		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("paid content"))
+		}),
+	})
+	defer srv.Close()
+
+	loop := &Loop{Signer: HMACSigner{Key: key}}
+	result, err := loop.Do(context.Background(), http.MethodGet, srv.URL+"/paid")
+	if err != nil {
+		t.Fatalf("Do() error = %v", err)
+	}
+	if result.FinalStatusCode != http.StatusOK || !result.Paid {
+		t.Fatalf("result = %+v, want status 200 and Paid true", result)
+	}
+}
+
 func TestLoopDoReturnsSignerError(t *testing.T) {
 	srv := httptest.NewServer(newTestMockServer())
 	defer srv.Close()
