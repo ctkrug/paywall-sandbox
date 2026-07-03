@@ -11,6 +11,7 @@ import (
 
 func runTest(args []string) {
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
+	verbose := fs.Bool("verbose", false, "print every header/descriptor/proof exchanged per step")
 	if err := fs.Parse(args); err != nil {
 		os.Exit(1)
 	}
@@ -29,6 +30,18 @@ func runTest(args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "test: %v\n", err)
 		os.Exit(1)
+	}
+
+	if *verbose {
+		for _, sr := range report.Steps {
+			if sr.Result == nil {
+				continue
+			}
+			fmt.Printf("=== %s ===\n", sr.Name)
+			for _, step := range sr.Result.Steps {
+				printStep(step)
+			}
+		}
 	}
 
 	fmt.Print(report.String())
