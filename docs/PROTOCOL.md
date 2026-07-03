@@ -85,6 +85,56 @@ repo alongside its tests:
 
 See [`examples/rules.json`](../examples/rules.json) for a runnable example.
 
+## Scenario files
+
+`test <scenario.json>` (`internal/scenario`) runs a declarative script
+against an in-process server it starts and tears down itself — no
+already-running `serve` required, so a scenario is a single self-contained
+CI assertion:
+
+```json
+{
+  "name": "paid route settles, free route does not",
+  "hmacKey": "shared-secret",
+  "rules": [
+    {"path": "/paid", "amount": 100, "asset": "USDC", "recipient": "0xsandbox"}
+  ],
+  "steps": [
+    {
+      "name": "GET /paid settles with the fake scheme",
+      "method": "GET",
+      "path": "/paid",
+      "scheme": "fake",
+      "expect": {"paid": true, "finalStatus": 200}
+    }
+  ]
+}
+```
+
+| Field           | Meaning                                                        |
+|-----------------|-------------------------------------------------------------------|
+| `name`          | Identifies the scenario in `test` output.                        |
+| `rules`         | Same shape as a `serve --config` rule set (see above); the server the scenario runs against is configured from these. |
+| `hmacKey`       | Optional shared secret; required if any step uses `hmac-sha256`.  |
+| `steps`         | The requests to make, in order.                                  |
+| `steps[].name`      | Identifies the step in `test` output.                          |
+| `steps[].method`    | HTTP method. Defaults to `GET`.                                |
+| `steps[].path`      | Request path, relative to the scenario server's root.          |
+| `steps[].scheme`    | Proof scheme to settle a challenge with, if one is issued. Defaults to `fake`. |
+| `steps[].expect.paid`        | Must match whether the client attempted to settle a challenge (`client.Result.Paid`) — true whenever a 402 was issued, regardless of whether the proof was ultimately accepted. |
+| `steps[].expect.finalStatus` | Must match the status code of the step's last response (`client.Result.FinalStatusCode`). Required. |
+
+Because `paid` and `finalStatus` are independent, a scenario can assert on
+rejection paths too — e.g. a step using the wrong `hmac-sha256` key expects
+`paid: true` (a retry was attempted) but `finalStatus: 402` (the server
+rejected the mismatched signature).
+
+`test` exits `0` only if every step's actual outcome matches its `expect`;
+otherwise it prints a `[FAIL]` line with the mismatch per step and exits
+`1`. See [`examples/scenario.json`](../examples/scenario.json) and
+[`examples/scenario-hmac.json`](../examples/scenario-hmac.json) for
+runnable examples.
+
 ## Adding a proof scheme
 
 `nonce`/expiry replay protection is scheme-agnostic; a scheme only needs to
@@ -98,8 +148,10 @@ define how `signature` is produced and checked. To add one:
 2. **Client side** (`internal/client`): implement `Signer` —
    `Sign(paywall.Descriptor) (paywall.Proof, error)` — that builds a
    matching proof. `HMACSigner` mirrors `HMACVerifier`'s computation.
-3. Wire the new `Signer`/scheme into the `request` subcommand if it should
-   be selectable from the CLI (today `request` always uses `FakeSigner`).
+3. Wire the new `Signer`/scheme into the `request` subcommand's
+   `resolveSigner` (`cmd/paywall-sandbox/request.go`) if it should be
+   selectable via `--scheme`, and into `internal/scenario`'s `signerFor` if
+   scenario steps should be able to select it too.
 
 `FakeScheme` and `HMACScheme` are each defined independently in both
 packages (not shared via import) so `internal/client` stays decoupled from
