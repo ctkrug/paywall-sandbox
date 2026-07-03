@@ -35,6 +35,12 @@ jobs:
         run: |
           diff <(gofmt -l .) <(echo -n "")
 
+      - name: Validate goreleaser config
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: check
+
   lint:
     runs-on: ubuntu-latest
     steps:
