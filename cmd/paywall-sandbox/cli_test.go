@@ -61,6 +61,17 @@ func TestCLITestSubcommandRunsExampleScenario(t *testing.T) {
 	}
 }
 
+func TestCLITestSubcommandVerboseTracesSteps(t *testing.T) {
+	cmd := exec.Command(binPath, "test", "--verbose", "../../examples/scenario.json")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("test --verbose examples/scenario.json: %v (%s)", err, out)
+	}
+	if !strings.Contains(string(out), "descriptor:") {
+		t.Errorf("test --verbose output = %q, want it to include a descriptor trace", out)
+	}
+}
+
 func TestCLITestSubcommandMissingFileExitsNonZero(t *testing.T) {
 	cmd := exec.Command(binPath, "test", "does-not-exist.json")
 	if err := cmd.Run(); err == nil {
