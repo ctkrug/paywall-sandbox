@@ -57,6 +57,32 @@ proves nothing about actual settlement. Real schemes (on-chain transfer
 receipts, signed settlement attestations, etc.) are future backlog work —
 see [`BACKLOG.md`](BACKLOG.md).
 
+## Rule config file
+
+`serve --config <file>` loads the server's protected routes from a JSON
+file instead of the single `--path`/`--amount`/`--asset`/`--recipient`
+rule, so a project can check a mock server's route shape into its own
+repo alongside its tests:
+
+```json
+{
+  "rules": [
+    {"path": "/paid", "amount": 100, "asset": "USDC", "recipient": "0xsandbox"},
+    {"method": "POST", "path": "/api/premium/*", "amount": 500, "asset": "USD", "recipient": "acct-premium"}
+  ]
+}
+```
+
+| Field       | Meaning                                                          |
+|-------------|-------------------------------------------------------------------|
+| `method`    | Optional; restricts the rule to one HTTP method. Omitted matches any. |
+| `path`      | Exact request path, or a prefix ending in `/*` (matches the prefix itself and anything nested under it). |
+| `amount`    | Price in the smallest unit of `asset`. Must be greater than zero. |
+| `asset`     | Currency or token identifier. Must not be empty.                 |
+| `recipient` | Address/account the payment must settle to. Must not be empty.   |
+
+See [`examples/rules.json`](../examples/rules.json) for a runnable example.
+
 ## Design choices and open questions
 
 - **One-time nonces.** A nonce is consumed on first successful use, so a
