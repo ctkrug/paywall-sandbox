@@ -3,9 +3,11 @@
 ## Scope
 
 Paywall Sandbox is a **development and testing tool**. It is not a payment
-processor and settles nothing for real. The only proof scheme it ships,
-`fake` (see [`docs/PROTOCOL.md`](docs/PROTOCOL.md)), is accepted once its
-nonce checks out — it does not verify that any value actually changed hands.
+processor and settles nothing for real. Neither proof scheme it ships,
+`fake` and `hmac-sha256` (see [`docs/PROTOCOL.md`](docs/PROTOCOL.md)),
+verifies that any value actually changed hands — `fake` is accepted
+unconditionally once its nonce checks out, and `hmac-sha256` only proves
+possession of a shared secret, not a real settlement.
 
 **Do not run `paywall-sandbox serve` on a publicly reachable address and
 treat a `200` response as evidence of real payment.** It is meant to run
