@@ -47,7 +47,7 @@ touching a real settlement network, a real wallet, or real money:
 ```console
 $ go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
 $ ./bin/paywall-sandbox serve --path /paid --amount 100 --asset USDC
-paywall-sandbox dev listening on :8402 (paid route: /paid)
+paywall-sandbox dev listening on :8402 (1 rule(s))
 
 # in another shell
 $ curl -i http://localhost:8402/paid
@@ -70,6 +70,14 @@ GET http://localhost:8402/paid -> 200
 See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full challenge/response
 wire format. `request` works against any target, mock or real — it only
 assumes the target speaks the protocol documented there.
+
+Multiple routes, or a rule set you want to check into your own repo, load
+from a JSON file instead of flags:
+
+```console
+$ ./bin/paywall-sandbox serve --config examples/rules.json
+paywall-sandbox dev listening on :8402 (2 rule(s))
+```
 
 ## Stack
 
