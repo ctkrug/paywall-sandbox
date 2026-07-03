@@ -28,6 +28,8 @@ func main() {
 		runServe(os.Args[2:])
 	case "request":
 		runRequest(os.Args[2:])
+	case "test":
+		runTest(os.Args[2:])
 	default:
 		usage()
 		os.Exit(1)
@@ -35,7 +37,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: paywall-sandbox <version|serve|request> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: paywall-sandbox <version|serve|request|test> [flags]")
 }
 
 func runServe(args []string) {
