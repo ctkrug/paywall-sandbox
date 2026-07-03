@@ -38,4 +38,4 @@ the wire format these stories implement against.
 - [x] Check in an example scenario file runnable from CI
 - [x] Expand the README with full CLI usage examples once `request` and
       `test` subcommands exist
-- [ ] Add a release workflow that builds and publishes versioned binaries
+- [x] Add a release workflow that builds and publishes versioned binaries
