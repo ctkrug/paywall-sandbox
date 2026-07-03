@@ -26,9 +26,20 @@ type Server struct {
 	// defaultTTL; a negative value is honored as-is, which is useful for
 	// deterministically testing expiry.
 	TTL time.Duration
+	// Verifiers maps a Proof.Scheme to the Verifier that validates it. A
+	// nil value accepts only FakeScheme, matching the sandbox's v1
+	// behavior. Set explicitly to add or replace accepted schemes.
+	Verifiers map[string]Verifier
 
 	mu     sync.Mutex
 	issued map[string]paywall.Descriptor // nonce -> the descriptor issued for it
+}
+
+func (s *Server) verifiers() map[string]Verifier {
+	if s.Verifiers != nil {
+		return s.Verifiers
+	}
+	return defaultVerifiers()
 }
 
 func (s *Server) ttl() time.Duration {
@@ -118,7 +129,7 @@ func (s *Server) acceptProof(req *http.Request) bool {
 	}
 
 	proof, err := paywall.DecodeProof([]byte(raw))
-	if err != nil || proof.Scheme != FakeScheme {
+	if err != nil {
 		return false
 	}
 
@@ -127,6 +138,11 @@ func (s *Server) acceptProof(req *http.Request) bool {
 
 	desc, ok := s.issued[proof.Nonce]
 	if !ok || desc.Expired(time.Now()) {
+		return false
+	}
+
+	verifier, ok := s.verifiers()[proof.Scheme]
+	if !ok || verifier.Verify(desc, proof) != nil {
 		return false
 	}
 
