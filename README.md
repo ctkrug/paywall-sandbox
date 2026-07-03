@@ -33,7 +33,7 @@ touching a real settlement network, a real wallet, or real money:
 - **Mock 402 server** — configurable per-route challenge rules (price,
   currency/asset, recipient, expiry, nonce) served as a structured payment
   descriptor in the `402` response body/headers.
-- **CLI client** — `paywall-sandbox request <url>` to run the full
+- **CLI client** — `paywall-sandbox request --url <url>` to run the full
   challenge → pay → retry loop against any target, mock or real.
 - **Proof construction** — pluggable payment-proof builders, starting with a
   fake/local scheme, so real settlement integrations can be swapped in later.
@@ -53,12 +53,23 @@ paywall-sandbox dev listening on :8402 (paid route: /paid)
 $ curl -i http://localhost:8402/paid
 HTTP/1.1 402 Payment Required
 X-Payment-Required: {"amount":100,"asset":"USDC","recipient":"0xsandbox","nonce":"...","expiresAt":"..."}
+
+# or drive the whole challenge -> pay -> retry loop with the CLI client
+$ ./bin/paywall-sandbox request --url http://localhost:8402/paid --verbose
+--- initial request ---
+GET http://localhost:8402/paid -> 402
+--- 402 challenge received ---
+GET http://localhost:8402/paid -> 402
+descriptor: {Amount:100 Asset:USDC Recipient:0xsandbox Nonce:... ExpiresAt:...}
+--- retry with proof ---
+GET http://localhost:8402/paid -> 200
+proof: {Nonce:... Scheme:fake Signature:...}
+GET http://localhost:8402/paid -> 200
 ```
 
 See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full challenge/response
-wire format, including how to construct a proof that gets a `200` back. A
-`request` subcommand that drives the whole loop for you is on the
-[backlog](docs/BACKLOG.md).
+wire format. `request` works against any target, mock or real — it only
+assumes the target speaks the protocol documented there.
 
 ## Stack
 
