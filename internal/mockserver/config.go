@@ -33,13 +33,7 @@ func LoadRules(r io.Reader) ([]Rule, error) {
 
 	rules := make([]Rule, 0, len(cfg.Rules))
 	for i, rc := range cfg.Rules {
-		rule := Rule{
-			Method:    rc.Method,
-			Path:      rc.Path,
-			Amount:    rc.Amount,
-			Asset:     rc.Asset,
-			Recipient: rc.Recipient,
-		}
+		rule := Rule(rc)
 		if err := validateRuleConfig(rule); err != nil {
 			return nil, fmt.Errorf("mockserver: rule %d: %w", i, err)
 		}
