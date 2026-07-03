@@ -27,14 +27,18 @@ internal/client/        The CLI client side: Signer, Loop (challenge/pay/retry)
   `LogRequests` is a middleware wrapping any handler with structured
   request logging. `LoadRules`/`LoadRulesFile` (`config.go`) parse a JSON
   rule set (see `examples/rules.json`) into `[]Rule`, validating every
-  entry.
+  entry. `Verifier` (`verifier.go`) is a pluggable interface for checking
+  a `Proof.Signature`; `Server.Verifiers` maps scheme name to `Verifier`
+  and defaults to `FakeScheme` only. `HMACVerifier` (`hmac_verifier.go`)
+  is a second scheme checking a shared-secret HMAC of the nonce.
 - **`internal/client`** — the CLI client side. `Signer` builds a `Proof`
-  from a received `Descriptor`; `FakeSigner` is the v1 (and only)
-  implementation. `Loop` drives the exchange: send, detect a 402, decode
-  the descriptor, sign, retry once — returning a `Result` with a
-  step-by-step `Steps` trace used for `--verbose` output. Only depends on
-  `internal/paywall` and stdlib `net/http`, so it can run against any
-  target, not just `internal/mockserver`.
+  from a received `Descriptor`; `FakeSigner` and `HMACSigner` (mirroring
+  `mockserver.HMACVerifier`) are the two implementations. `Loop` drives
+  the exchange: send, detect a 402, decode the descriptor, sign, retry
+  once — returning a `Result` with a step-by-step `Steps` trace used for
+  `--verbose` output. Only depends on `internal/paywall` and stdlib
+  `net/http`, so it can run against any target, not just
+  `internal/mockserver`.
 - **`cmd/paywall-sandbox`** — thin CLI wrapper. `serve` stands up a
   `mockserver.Server` with rules either from flags (one rule) or
   `--config <file>` (`mockserver.LoadRulesFile`); `request` drives a
@@ -73,11 +77,13 @@ go test ./...
 
 ## Where new work plugs in
 
-- New proof schemes: keep `paywall.Proof.Scheme` as the discriminator;
-  `mockserver.Server.acceptProof` is the only place that currently
-  hardcodes `FakeScheme` — see `docs/BACKLOG.md`'s pluggable-signer story.
-- New signer schemes: implement `client.Signer` and wire a `--scheme` flag
-  in `cmd/paywall-sandbox/request.go` to select among them.
+- New proof schemes: implement `mockserver.Verifier` + `client.Signer` (see
+  `docs/PROTOCOL.md`'s "Adding a proof scheme"); `HMACVerifier`/
+  `HMACSigner` are the worked example. Neither `Server` nor `Loop` need to
+  change.
+- Selecting a signer from the CLI: `request` always uses `FakeSigner`
+  today; wire a `--scheme` flag in `cmd/paywall-sandbox/request.go` to
+  choose among registered `client.Signer`s.
 - New rule config fields (e.g. per-rule TTL): extend `RuleConfig`/`Rule`
   and `validateRuleConfig` in `internal/mockserver/config.go`; `Server`
   itself doesn't need to change.
