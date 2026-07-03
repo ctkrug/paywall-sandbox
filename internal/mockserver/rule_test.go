@@ -18,6 +18,10 @@ func TestRuleMatches(t *testing.T) {
 		{"wildcard method", Rule{Path: "/paid"}, "POST", "/paid", true},
 		{"wrong method", Rule{Method: "GET", Path: "/paid"}, "POST", "/paid", false},
 		{"wrong path", Rule{Method: "GET", Path: "/paid"}, "GET", "/free", false},
+		{"wildcard matches prefix itself", Rule{Path: "/api/*"}, "GET", "/api", true},
+		{"wildcard matches nested path", Rule{Path: "/api/*"}, "GET", "/api/v1/widgets", true},
+		{"wildcard rejects sibling prefix", Rule{Path: "/api/*"}, "GET", "/apikeys", false},
+		{"wildcard rejects unrelated path", Rule{Path: "/api/*"}, "GET", "/free", false},
 	}
 
 	for _, tc := range cases {
