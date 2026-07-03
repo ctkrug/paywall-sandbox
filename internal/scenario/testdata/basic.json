@@ -1,0 +1,9 @@
+{
+  "name": "basic",
+  "rules": [
+    {"path": "/paid", "amount": 100, "asset": "USDC", "recipient": "0xsandbox"}
+  ],
+  "steps": [
+    {"name": "pays", "path": "/paid", "expect": {"paid": true, "finalStatus": 200}}
+  ]
+}
