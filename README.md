@@ -81,7 +81,8 @@ GET http://localhost:8402/paid -> 200
 
 See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full challenge/response
 wire format. `request` works against any target, mock or real — it only
-assumes the target speaks the protocol documented there.
+assumes the target speaks the protocol documented there. It gives up after
+`--timeout` (default `10s`) if the target never responds.
 
 Multiple routes, or a rule set you want to check into your own repo, load
 from a JSON file instead of flags:
