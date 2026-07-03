@@ -32,3 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - `mockserver.Server` no longer accumulates one map entry per issued
   challenge forever; expired, never-retried nonces are now reclaimed.
+- `serve` (without `--config`) now rejects an invalid `--amount`/`--asset`/
+  `--recipient`/`--path` combination instead of silently starting with a
+  broken rule.
