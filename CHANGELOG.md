@@ -23,3 +23,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and a `test <scenario>` CLI subcommand that runs a sequence of requests
   against an in-process server and asserts on the outcome, exiting non-zero
   on any failure so it doubles as a CI check.
+- Release automation: a `v*`-tag-triggered GitHub Actions workflow that
+  runs GoReleaser to publish cross-compiled binaries and checksums.
