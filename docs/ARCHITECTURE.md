@@ -104,6 +104,14 @@ go test ./...
 
 `make build|test|run|fmt|vet|lint` wrap the above; see `Makefile`.
 
+## Release
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which invokes
+[GoReleaser](https://goreleaser.com) against `.goreleaser.yaml` to
+cross-compile `linux`/`darwin`/`windows` × `amd64`/`arm64` binaries,
+stamp `main.version` via ldflags, and publish them as a GitHub Release.
+See `docs/RELEASING.md` for the operator steps.
+
 ## Where new work plugs in
 
 - New proof schemes: implement `mockserver.Verifier` + `client.Signer` (see
