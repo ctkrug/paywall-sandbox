@@ -11,8 +11,8 @@ of "pay-per-call" APIs (x402 and friends) is finally giving it a real shape:
 a server challenges a request with `402` plus a payment descriptor, the
 client (or an agent acting for it) settles payment out of band, then retries
 the request with proof of payment attached. There's no dominant SDK yet, and
-the wire format is still being feretted out from scattered specs and reference
-implementations.
+the wire format is still being ferreted out from scattered specs and
+reference implementations.
 
 Paywall Sandbox lets you develop and test against that flow **without**
 touching a real settlement network, a real wallet, or real money:
@@ -38,6 +38,24 @@ touching a real settlement network, a real wallet, or real money:
   expected challenge/response sequences, runnable in CI.
 - **Inspection mode** — verbose logging of every header, descriptor field,
   and retry so you can see exactly what a real client would need to do.
+
+## Quick start
+
+```console
+$ go build -o bin/paywall-sandbox ./cmd/paywall-sandbox
+$ ./bin/paywall-sandbox serve --path /paid --amount 100 --asset USDC
+paywall-sandbox dev listening on :8402 (paid route: /paid)
+
+# in another shell
+$ curl -i http://localhost:8402/paid
+HTTP/1.1 402 Payment Required
+X-Payment-Required: {"amount":100,"asset":"USDC","recipient":"0xsandbox","nonce":"...","expiresAt":"..."}
+```
+
+See [`docs/PROTOCOL.md`](docs/PROTOCOL.md) for the full challenge/response
+wire format, including how to construct a proof that gets a `200` back. A
+`request` subcommand that drives the whole loop for you is on the
+[backlog](docs/BACKLOG.md).
 
 ## Stack
 
