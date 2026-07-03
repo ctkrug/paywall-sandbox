@@ -1,0 +1,21 @@
+{
+  "name": "paid route settles, free route does not",
+  "rules": [
+    {"path": "/paid", "amount": 100, "asset": "USDC", "recipient": "0xsandbox"}
+  ],
+  "steps": [
+    {
+      "name": "GET /paid is challenged and settles with the fake scheme",
+      "method": "GET",
+      "path": "/paid",
+      "scheme": "fake",
+      "expect": {"paid": true, "finalStatus": 200}
+    },
+    {
+      "name": "GET /free is never challenged",
+      "method": "GET",
+      "path": "/free",
+      "expect": {"paid": false, "finalStatus": 200}
+    }
+  ]
+}
