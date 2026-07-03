@@ -31,3 +31,24 @@ func TestLoadServeRulesConfigNotFound(t *testing.T) {
 		t.Fatal("loadServeRules: want error for missing config file, got nil")
 	}
 }
+
+func TestLoadServeRulesRejectsInvalidFlagValues(t *testing.T) {
+	cases := []struct {
+		name                   string
+		path, asset, recipient string
+		amount                 uint64
+	}{
+		{"zero amount", "/paid", "USDC", "0xsandbox", 0},
+		{"empty asset", "/paid", "", "0xsandbox", 100},
+		{"empty recipient", "/paid", "USDC", "", 100},
+		{"empty path", "", "USDC", "0xsandbox", 100},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := loadServeRules("", tc.path, tc.amount, tc.asset, tc.recipient); err == nil {
+				t.Fatal("loadServeRules: want error for invalid flag-derived rule, got nil")
+			}
+		})
+	}
+}
