@@ -25,6 +25,9 @@ internal/scenario/      Declarative scenario files: load, validate, run, report
   unmatched-proof requests and forwards matched-proof ones to `Next`.
   Nonces are issued and consumed in an in-memory map guarded by a mutex —
   one-time use, hard TTL, no persistence (see `docs/PROTOCOL.md` for why).
+  Expired-and-never-retried nonces are swept on the next challenge (and
+  reclaimed immediately if a proof for one is presented) so a long-running
+  `Server` doesn't accumulate them forever.
   `LogRequests` is a middleware wrapping any handler with structured
   request logging. `LoadRules`/`LoadRulesFile` (`config.go`) parse a JSON
   rule set (see `examples/rules.json`) into `[]Rule`, validating every
@@ -57,7 +60,8 @@ internal/scenario/      Declarative scenario files: load, validate, run, report
   `mockserver.Server` with rules either from flags (one rule) or
   `--config <file>` (`mockserver.LoadRulesFile`); `request` drives a
   `client.Loop` against `--url` (`resolveSigner` maps `--scheme`/
-  `--hmac-key` to a `client.Signer`); `test` loads a scenario file and runs
+  `--hmac-key` to a `client.Signer`), bounded by `--timeout` (default
+  `10s`) via `context.WithTimeout`; `test` loads a scenario file and runs
   it via `internal/scenario`, exiting non-zero on any step failure;
   `version` prints the build version.
 
