@@ -28,7 +28,7 @@ type Server struct {
 	TTL time.Duration
 
 	mu     sync.Mutex
-	issued map[string]time.Time // nonce -> expiry
+	issued map[string]paywall.Descriptor // nonce -> the descriptor issued for it
 }
 
 func (s *Server) ttl() time.Duration {
@@ -76,9 +76,10 @@ func (s *Server) challenge(w http.ResponseWriter, rule Rule) {
 		Amount:    rule.Amount,
 		Asset:     rule.Asset,
 		Recipient: rule.Recipient,
-		Nonce:     s.issueNonce(),
+		Nonce:     newNonce(),
 		ExpiresAt: time.Now().Add(s.ttl()),
 	}
+	s.storeIssued(desc)
 
 	body, err := desc.Encode()
 	if err != nil {
@@ -92,19 +93,19 @@ func (s *Server) challenge(w http.ResponseWriter, rule Rule) {
 	_, _ = w.Write(body)
 }
 
-func (s *Server) issueNonce() string {
+func newNonce() string {
 	buf := make([]byte, 16)
 	_, _ = rand.Read(buf)
-	nonce := hex.EncodeToString(buf)
+	return hex.EncodeToString(buf)
+}
 
+func (s *Server) storeIssued(desc paywall.Descriptor) {
 	s.mu.Lock()
 	if s.issued == nil {
-		s.issued = make(map[string]time.Time)
+		s.issued = make(map[string]paywall.Descriptor)
 	}
-	s.issued[nonce] = time.Now().Add(s.ttl())
+	s.issued[desc.Nonce] = desc
 	s.mu.Unlock()
-
-	return nonce
 }
 
 // acceptProof reports whether req carries a valid, unexpired proof for a
@@ -124,8 +125,8 @@ func (s *Server) acceptProof(req *http.Request) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	expiry, ok := s.issued[proof.Nonce]
-	if !ok || time.Now().After(expiry) {
+	desc, ok := s.issued[proof.Nonce]
+	if !ok || desc.Expired(time.Now()) {
 		return false
 	}
 
